@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ClearTrace – Investigation Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-main: #111110;
+            --bg-card: #1a1916;
+            --bg-panel: #211f1c;
+            --border: rgba(255, 255, 255, .07);
+            --border-2: rgba(255, 255, 255, .12);
+            --text-pri: #e8e5e0;
+            --text-sec: #a09f9b;
+            --text-dim: #6b6966;
+            --accent: #c8b89a;
+            --accent-hv: #d4c4aa;
+            --red: #c96666;
+            --orange: #d4845a;
+            --yellow: #c9a84c;
+            --green: #7fba8a;
+            --cyan: #9db5b0;
+        }
+
+        html {
+            background: var(--bg-main);
+        }
+
+        body {
+            font-family: 'Geist', sans-serif;
+            color: var(--text-pri);
+            background: var(--bg-main);
+            min-height: 100vh;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar-brand {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: -.3px;
+        }
+
+        .topbar-sep {
+            color: var(--border-2);
+        }
+
+        .topbar-title {
+            color: var(--text-sec);
+            font-size: 13px;
+        }
+
+        .back-btn {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-sec);
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: border-color .2s, color .2s;
+        }
+
+        .back-btn:hover {
+            border-color: var(--border-2);
+            color: var(--text-pri);
+        }
+
+        /* ── Layout ── */
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px 80px;
+        }
+
+        /* ── Loading ── */
+        #loadingState {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
+            gap: 16px;
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 2px solid var(--border-2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Case Header ── */
+        .case-header {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .case-badge {
+            flex-shrink: 0;
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .case-meta {
+            flex: 1;
+        }
+
+        .case-id {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 4px;
+        }
+
+        .case-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-pri);
+            margin-bottom: 6px;
+        }
+
+        .case-sub {
+            font-size: 13px;
+            color: var(--text-sec);
+        }
+
+        .risk-pill {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            align-self: flex-start;
+        }
+
+        /* ── Grid ── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 700px) {
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px 22px;
+        }
+
+        .card-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .card-title svg {
+            opacity: .6;
+        }
+
+        /* ── KV rows ── */
+        .kv-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .kv-row:last-child {
+            border-bottom: none;
+        }
+
+        .kv-key {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .kv-val {
+            font-size: 12px;
+            color: var(--text-sec);
+            font-weight: 500;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-all;
+        }
+
+        .kv-val.mono {
+            font-family: 'Geist Mono', monospace;
+            font-size: 11px;
+        }
+
+        .kv-val.hi {
+            color: var(--text-pri);
+            font-weight: 600;
+        }
+
+        .kv-val.red {
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .kv-val.green {
+            color: var(--green);
+        }
+
+        /* ── Anomaly card ── */
+        .anomaly-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+        }
+
+        .anomaly-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .anomaly-type {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-pri);
+            margin-bottom: 3px;
+        }
+
+        .anomaly-detail {
+            font-size: 11px;
+            color: var(--text-sec);
+            line-height: 1.5;
+        }
+
+        .sev-badge {
+            margin-left: auto;
+            flex-shrink: 0;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        /* ── Transaction history mini table ── */
+        .mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .mini-table th {
+            font-weight: 600;
+            color: var(--text-dim);
+            text-align: left;
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        .mini-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-sec);
+        }
+
+        .mini-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .mini-table tr.active-txn td {
+            background: rgba(200, 184, 154, .05);
+            color: var(--text-pri);
+        }
+
+        /* ── AI Report ── */
+        .ai-report {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px 22px;
+            margin-bottom: 16px;
+        }
+
+        .ai-report-content {
+            font-size: 13px;
+            color: var(--text-sec);
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .ai-report-content strong {
+            color: var(--text-pri);
+        }
+
+        .ai-report-content h2,
+        .ai-report-content h3 {
+            color: var(--text-pri);
+            font-size: 13px;
+            font-weight: 600;
+            margin: 12px 0 4px;
+        }
+
+        /* ── Outcome section ── */
+        .outcome-card {
+            border-radius: 10px;
+            padding: 22px 24px;
+            margin-bottom: 16px;
+            border: 1px solid;
+        }
+
+        .outcome-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 6px;
+        }
+
+        .outcome-verdict {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -.3px;
+            margin-bottom: 10px;
+        }
+
+        .outcome-action {
+            font-size: 13px;
+            line-height: 1.7;
+            opacity: .85;
+        }
+
+        /* ── Officer actions (email panel) ── */
+        .action-bar {
+            position: sticky;
+            bottom: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 16px 24px;
+            margin-top: 32px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .action-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+
+        .action-email-input {
+            flex: 1;
+            min-width: 200px;
+            max-width: 320px;
+            background: var(--bg-main);
+            border: 1px solid var(--border-2);
+            color: var(--text-pri);
+            border-radius: 7px;
+            padding: 9px 13px;
+            font-size: 13px;
+            font-family: 'Geist', sans-serif;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .action-email-input:focus {
+            border-color: var(--accent);
+        }
+
+        .btn-primary {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--accent);
+            color: #1a1916;
+            border: none;
+            border-radius: 7px;
+            padding: 9px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .2s;
+            white-space: nowrap;
+            font-family: 'Geist', sans-serif;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hv);
+        }
+
+        .btn-primary:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--bg-panel);
+            color: var(--text-sec);
+            border: 1px solid var(--border-2);
+            border-radius: 7px;
+            padding: 9px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color .2s, color .2s;
+            white-space: nowrap;
+            font-family: 'Geist', sans-serif;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--text-pri);
+        }
+
+        .email-status {
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        /* ── Score ring ── */
+        .score-ring {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            border-radius: 50%;
+            border: 3px solid;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+        }
+
+        .score-ring .num {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-ring .of {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        /* ── Section divider ── */
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--text-dim);
+            margin: 28px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── Verdict pill ── */
+        .verdict {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+
+        .ver-critical {
+            background: #c9666622;
+            color: #c96666;
+            border: 1px solid #c9666644;
+        }
+
+        .ver-high {
+            background: #d4845a22;
+            color: #d4845a;
+            border: 1px solid #d4845a44;
+        }
+
+        .ver-medium {
+            background: #c9a84c22;
+            color: #c9a84c;
+            border: 1px solid #c9a84c44;
+        }
+
+        .ver-low {
+            background: #7fba8a22;
+            color: #7fba8a;
+            border: 1px solid #7fba8a44;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top bar -->
+    <div class="topbar">
+        <span class="topbar-brand">ClearTrace</span>
+        <span class="topbar-sep">/</span>
+        <span class="topbar-title" id="topbarTitle">Investigation</span>
+        <a href="/dashboard#history" class="back-btn" onclick="history.back();return false;">
+            <i data-lucide="arrow-left" style="width:13px;height:13px"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="page">
+
+        <!-- Loading -->
+        <div id="loadingState">
+            <div class="spinner"></div>
+            <span>Loading investigation data…</span>
+        </div>
+
+        <!-- Main content -->
+        <div id="mainContent" style="display:none">
+
+            <!-- Case Header -->
+            <div class="case-header">
+                <div class="case-badge" id="caseBadge"></div>
+                <div class="case-meta">
+                    <div class="case-id" id="caseId"></div>
+                    <div class="case-title" id="caseTitle"></div>
+                    <div class="case-sub" id="caseSub"></div>
+                </div>
+                <div id="riskPill" class="risk-pill"></div>
+            </div>
+
+            <!-- Summary KPI row -->
+            <div class="grid-3" style="margin-bottom:24px">
+                <div class="card" style="text-align:center">
+                    <div class="card-title" style="justify-content:center">Risk Score</div>
+                    <div class="score-ring" id="scoreRing">
+                        <span class="num" id="scoreNum">—</span>
+                        <span class="of">/10</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-dim)" id="scoreLabel"></div>
+                </div>
+                <div class="card" style="text-align:center">
+                    <div class="card-title" style="justify-content:center">Anomalies Found</div>
+                    <div style="font-size:36px;font-weight:800;color:var(--text-pri);margin:8px 0" id="anomCount">—
+                    </div>
+                    <div style="font-size:11px;color:var(--text-dim)" id="anomLabel">in this transaction</div>
+                </div>
+                <div class="card" style="text-align:center">
+                    <div class="card-title" style="justify-content:center">Txns Analyzed</div>
+                    <div style="font-size:36px;font-weight:800;color:var(--text-pri);margin:8px 0" id="txnCount">—</div>
+                    <div style="font-size:11px;color:var(--text-dim)">for this customer</div>
+                </div>
+            </div>
+
+            <!-- Outcome -->
+            <div class="outcome-card" id="outcomeCard">
+                <div class="outcome-label" id="outcomeLabel">Investigation Outcome</div>
+                <div class="outcome-verdict" id="outcomeVerdict">—</div>
+                <div class="outcome-action" id="outcomeAction"></div>
+            </div>
+
+            <div class="section-label">Customer & Transaction</div>
+
+            <!-- Customer + Transaction -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">
+                        <i data-lucide="user" style="width:13px;height:13px"></i> Customer Profile
+                    </div>
+                    <div id="custKV"></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">
+                        <i data-lucide="credit-card" style="width:13px;height:13px"></i> Transaction Details
+                    </div>
+                    <div id="txnKV"></div>
+                </div>
+            </div>
+
+            <!-- Merchant + Device/Network -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">
+                        <i data-lucide="store" style="width:13px;height:13px"></i> Merchant Information
+                    </div>
+                    <div id="merchantKV"></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">
+                        <i data-lucide="monitor-smartphone" style="width:13px;height:13px"></i> Device & Network
+                    </div>
+                    <div id="deviceKV"></div>
+                </div>
+            </div>
+
+            <div class="section-label">Detected Anomalies</div>
+
+            <div id="anomaliesSection"></div>
+
+            <div class="section-label">Recent Transactions (This Customer)</div>
+
+            <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
+                <table class="mini-table" id="txnHistTable">
+                    <thead>
+                        <tr>
+                            <th>Txn ID</th>
+                            <th>Merchant</th>
+                            <th>Amount</th>
+                            <th>Location</th>
+                            <th>Timestamp</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="txnHistBody"></tbody>
+                </table>
+            </div>
+
+            <div class="section-label">
+                <i data-lucide="sparkles" style="width:13px;height:13px;color:var(--accent)"></i>
+                GenAI Investigation Report
+            </div>
+
+            <div class="ai-report">
+                <div class="card-title" style="margin-bottom:12px">
+                    <i data-lucide="bot" style="width:13px;height:13px"></i>
+                    AI-Generated Analysis
+                    <span
+                        style="margin-left:auto;font-size:10px;background:var(--bg-card);padding:2px 8px;border-radius:4px">Powered
+                        by Gemini</span>
+                </div>
+                <div class="ai-report-content" id="aiReport">Loading…</div>
+            </div>
+
+        </div><!-- /mainContent -->
+    </div><!-- /page -->
+
+    <!-- Sticky Officer Action Bar -->
+    <div class="action-bar" id="actionBar" style="display:none">
+        <span class="action-label">Officer Actions:</span>
+        <input type="email" class="action-email-input" id="emailInput" placeholder="Customer email address…">
+        <button class="btn-primary" id="sendEmailBtn" onclick="sendAlertEmail()">
+            <i data-lucide="send" style="width:14px;height:14px"></i>
+            Send Alert Email
+        </button>
+        <button class="btn-secondary" onclick="downloadReport()">
+            <i data-lucide="download" style="width:14px;height:14px"></i>
+            Download PDF Report
+        </button>
+        <span class="email-status" id="emailStatus"></span>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const TXN_ID = params.get('txn_id') || '';
+        let _data = null;
+
+        // ── Helpers ──
+        function kv(key, val, cls = '') {
+            return `<div class="kv-row"><span class="kv-key">${key}</span><span class="kv-val ${cls}">${val || '—'}</span></div>`;
+        }
+        function riskCol(level) {
+            return { CRITICAL: '#c96666', HIGH: '#d4845a', MEDIUM: '#c9a84c', LOW: '#7fba8a' }[level] || '#a09f9b';
+        }
+        function riskBg(level) {
+            return { CRITICAL: '#c9666618', HIGH: '#d4845a18', MEDIUM: '#c9a84c18', LOW: '#7fba8a18' }[level] || '#a09f9b18';
+        }
+        function sevIcon(s) {
+            return { CRITICAL: '🔴', HIGH: '🟠', MEDIUM: '🟡', LOW: '🟢' }[s] || '⚪';
+        }
+        function sevCls(s) {
+            return { CRITICAL: 'ver-critical', HIGH: 'ver-high', MEDIUM: 'ver-medium', LOW: 'ver-low' }[s] || '';
+        }
+        function renderMD(t) {
+            if (!t) return '';
+            return t
+                .replace(/^#{1,3} (.*)$/gm, '<strong>$1</strong>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/`(.*?)`/g, '<code style="font-family:Geist Mono,monospace;font-size:11px;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px">$1</code>')
+                .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">')
+                .replace(/\n\n/g, '<br><br>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // ── Load data ──
+        async function load() {
+            if (!TXN_ID) { document.getElementById('loadingState').innerHTML = '<p style="color:var(--red)">No transaction ID provided.</p>'; return; }
+            try {
+                const r = await fetch(`/api/investigate/txn/${TXN_ID}`);
+                if (!r.ok) { throw new Error('Not found'); }
+                _data = await r.json();
+                render();
+            } catch (e) {
+                document.getElementById('loadingState').innerHTML = `<p style="color:var(--red)">Failed to load investigation data.<br><small>${e}</small></p>`;
+            }
+        }
+
+        function render() {
+            const d = _data;
+            const c = d.customer;
+            const t = d.transaction;
+            const m = d.merchant;
+            const rl = d.risk_level;
+            const rc = riskCol(rl);
+            const rb = riskBg(rl);
+            const caseId = `INV-${d.txn_id}`;
+
+            // Hide loading, show main
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('mainContent').style.display = '';
+            document.getElementById('actionBar').style.display = '';
+
+            // Topbar
+            document.getElementById('topbarTitle').textContent = `${caseId} – ${c.full_name}`;
+            document.title = `ClearTrace – ${caseId}`;
+
+            // Case header
+            const icons = { CRITICAL: '🚨', HIGH: '⚠️', MEDIUM: '🔍', LOW: '✅' };
+            document.getElementById('caseBadge').style.cssText = `background:${rb};border:1px solid ${rc}33;font-size:22px;width:52px;height:52px;border-radius:10px;display:flex;align-items:center;justify-content:center`;
+            document.getElementById('caseBadge').textContent = icons[rl] || '🔍';
+            document.getElementById('caseId').textContent = caseId;
+            document.getElementById('caseTitle').textContent = `Fraud Investigation – ${c.full_name}`;
+            document.getElementById('caseSub').textContent = `Transaction ${t.transaction_uuid} · ${t.transaction_timestamp} · ${t.transaction_location}`;
+            const pill = document.getElementById('riskPill');
+            pill.textContent = rl + ' RISK';
+            pill.style.cssText = `padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:${rb};color:${rc};border:1px solid ${rc}44`;
+
+            // KPI cards
+            document.getElementById('scoreNum').textContent = d.risk_score;
+            document.getElementById('scoreLabel').textContent = rl + ' risk level';
+            document.getElementById('scoreRing').style.borderColor = rc;
+            document.getElementById('scoreRing').style.color = rc;
+            document.getElementById('anomCount').textContent = d.anomalies.length;
+            document.getElementById('txnCount').textContent = d.total_txns_analyzed;
+
+            // Outcome
+            const oc = document.getElementById('outcomeCard');
+            oc.style.cssText = `border-radius:10px;padding:22px 24px;margin-bottom:16px;border:1px solid ${rc}44;background:${rb};`;
+            document.getElementById('outcomeLabel').style.color = rc;
+            document.getElementById('outcomeVerdict').textContent = d.outcome;
+            document.getElementById('outcomeVerdict').style.color = rc;
+            document.getElementById('outcomeAction').textContent = d.recommended_action;
+            document.getElementById('outcomeAction').style.color = 'var(--text-sec)';
+
+            // Customer KV
+            document.getElementById('custKV').innerHTML = [
+                kv('Name', `<strong style="color:var(--text-pri)">${c.full_name}</strong>`, 'hi'),
+                kv('Gender / Age', `${c.gender || '—'}, ${c.age}`),
+                kv('Occupation', c.occupation),
+                kv('UPI ID', `<code style="font-size:11px">${c.upi_id}</code>`),
+                kv('Bank', c.bank_name),
+                kv('Account No.', c.account_number, 'mono'),
+                kv('IFSC Code', c.ifsc_code, 'mono'),
+                kv('Branch', c.home_branch),
+                kv('Phone', c.registered_phone_number),
+                kv('Email', `<span style="color:var(--accent)">${c.email || '—'}</span>`),
+                kv('Balance', `<strong style="color:var(--green)">₹${parseFloat(c.account_balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>`),
+                kv('KYC Status', c.kyc_status),
+                kv('Risk Tier', `<span style="color:${rc};font-weight:600">${c.risk_tier || '—'}</span>`),
+                kv('Account Since', c.account_open_date),
+            ].join('');
+
+            // Transaction KV
+            const txnAmtColor = parseFloat(t.transaction_amount) > 50000 ? 'var(--red)' : 'var(--text-pri)';
+            document.getElementById('txnKV').innerHTML = [
+                kv('Txn UUID', `<code style="font-size:11px">${t.transaction_uuid}</code>`),
+                kv('Amount', `<strong style="color:${txnAmtColor}">₹${parseFloat(t.transaction_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>`),
+                kv('Type', t.transaction_type || 'DEBIT'),
+                kv('Mode', t.transaction_mode || 'UPI'),
+                kv('UPI Ref', `<code style="font-size:10px">${t.upi_reference_id || '—'}</code>`),
+                kv('Status', `<span style="color:${t.transaction_status === 'SUCCESS' ? 'var(--green)' : 'var(--red)'}">${t.transaction_status || 'SUCCESS'}</span>`),
+                kv('Timestamp', t.transaction_timestamp),
+                kv('Location', t.transaction_location),
+                kv('UPI App', t.customer_upi_app || '—'),
+                kv('Failure Reason', t.failure_reason || 'None'),
+                kv('Latency', t.response_latency_ms ? t.response_latency_ms + ' ms' : '—'),
+            ].join('');
+
+            // Merchant KV
+            document.getElementById('merchantKV').innerHTML = m.merchant_name ? [
+                kv('Name', `<strong style="color:var(--text-pri)">${m.merchant_name}</strong>`),
+                kv('Category', m.merchant_category || '—'),
+                kv('UPI ID', `<code style="font-size:11px">${m.merchant_upi_id || '—'}</code>`),
+                kv('Bank', m.merchant_bank_name),
+                kv('Branch', m.merchant_bank_branch),
+                kv('GSTIN', m.merchant_gstin || '—', 'mono'),
+                kv('Rating', m.merchant_rating ? '⭐ ' + m.merchant_rating : '—'),
+                kv('Verified', m.is_verified === 'True' ? '<span style="color:var(--green)">✓ Yes</span>' : '<span style="color:var(--red)">✗ No</span>'),
+                kv('Refund Rate', m.refund_rate_percent ? m.refund_rate_percent + '%' : '—'),
+            ].join('') : '<p style="color:var(--text-dim);font-size:12px">Merchant data unavailable.</p>';
+
+            // Device/Network KV
+            document.getElementById('deviceKV').innerHTML = [
+                kv('Transaction Device', t.customer_device_id || c.registered_device_id, 'mono'),
+                kv('Device Model', t.customer_device_model || '—'),
+                kv('Transaction IP', t.customer_ip_address, 'mono'),
+                kv('Registered Device', c.registered_device_id, 'mono'),
+                kv('Registered Device Model', c.registered_device_model || '—'),
+                kv('Registered IP', c.registered_ip_address, 'mono'),
+                kv('Device Match', t.customer_device_id === c.registered_device_id
+                    ? '<span style="color:var(--green)">✓ Match</span>'
+                    : '<span style="color:var(--red)">✗ Mismatch</span>'),
+                kv('IP Match', t.customer_ip_address === c.registered_ip_address
+                    ? '<span style="color:var(--green)">✓ Match</span>'
+                    : '<span style="color:var(--red)">✗ Mismatch</span>'),
+            ].join('');
+
+            // Anomalies
+            const as = document.getElementById('anomaliesSection');
+            if (!d.anomalies.length) {
+                as.innerHTML = `<div class="card" style="color:var(--green);font-size:13px;text-align:center;padding:24px">
+        ✅ No anomalies detected in this transaction.
+      </div>`;
+            } else {
+                as.innerHTML = d.anomalies.map(a => `
+        <div class="anomaly-item">
+          <span class="anomaly-icon">${sevIcon(a.severity)}</span>
+          <div style="flex:1">
+            <div class="anomaly-type">${a.type}</div>
+            <div class="anomaly-detail">${a.detail}</div>
+          </div>
+          <span class="sev-badge ${sevCls(a.severity)}" style="background:${riskBg(a.severity)};color:${riskCol(a.severity)};border:1px solid ${riskCol(a.severity)}44">${a.severity}</span>
+        </div>`).join('');
+            }
+
+            // Txn history
+            const tb = document.getElementById('txnHistBody');
+            tb.innerHTML = (d.all_customer_txns || []).map(tx => {
+                const isThis = tx.transaction_uuid === TXN_ID;
+                const mc = merchants_map[tx.merchant_uuid] || tx.merchant_name || tx.merchant_uuid;
+                return `<tr class="${isThis ? 'active-txn' : ''}">
+        <td><code style="font-size:10px">${tx.transaction_uuid}</code>${isThis ? ' <span style="color:var(--accent);font-size:10px;font-weight:700">← this</span>' : ''}</td>
+        <td>${tx.merchant_name || tx.merchant_uuid}</td>
+        <td style="color:var(--text-pri);font-weight:600">₹${parseFloat(tx.transaction_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td>${tx.transaction_location}</td>
+        <td style="font-size:11px">${tx.transaction_timestamp}</td>
+        <td><span style="color:${tx.transaction_status === 'SUCCESS' ? 'var(--green)' : 'var(--red)'};font-size:11px">${tx.transaction_status || 'SUCCESS'}</span></td>
+      </tr>`;
+            }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:16px">No transaction history.</td></tr>';
+
+            // AI report
+            document.getElementById('aiReport').innerHTML = renderMD(d.ai_report || 'AI report not available. Set a Gemini API key for AI-generated analysis.');
+
+            // Pre-fill email
+            document.getElementById('emailInput').value = c.email || '';
+
+            lucide.createIcons();
+        }
+
+        const merchants_map = {};
+
+        // ── Email ──
+        async function sendAlertEmail() {
+            if (!_data) return;
+            const email = document.getElementById('emailInput').value.trim();
+            if (!email || !email.includes('@')) { showStatus('⚠ Enter a valid email.', '#c9a84c'); return; }
+            const btn = document.getElementById('sendEmailBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            try {
+                const r = await fetch('/api/send_alert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        txn_id: TXN_ID,
+                        customer_uuid: _data.customer.customer_uuid,
+                        recipient_email: email,
+                        generate_pdf: true
+                    })
+                });
+                const d = await r.json();
+                if (d.success) showStatus(`✅ Alert email sent to ${email} with PDF attached.`, '#7fba8a');
+                else showStatus(`❌ ${d.error}`, '#c96666');
+            } catch (e) { showStatus('❌ Network error.', '#c96666'); }
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="send" style="width:14px;height:14px"></i> Send Alert Email';
+            lucide.createIcons();
+        }
+
+        function showStatus(msg, color) {
+            const el = document.getElementById('emailStatus');
+            el.textContent = msg; el.style.color = color; el.style.display = 'block';
+            el.style.background = color + '18'; el.style.border = `1px solid ${color}44`;
+            el.style.borderRadius = '6px'; el.style.padding = '6px 14px';
+            setTimeout(() => el.style.display = 'none', 6000);
+        }
+
+        async function downloadReport() {
+            const a = document.createElement('a');
+            a.href = `/api/generate_report/${TXN_ID}`;
+            a.download = `Report_${TXN_ID}.pdf`;
+            document.body.appendChild(a); a.click(); a.remove();
+        }
+
+        load();
+    </script>
+</body>
+
+</html>
