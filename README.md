@@ -15,7 +15,11 @@ ClearTrace serves as a **Multiversal Nexus** for banking officers. In a world wh
 ## 📽️ Full Demo
 Experience the Multiversal Nexus in action. Watch the demo to see how ClearTrace unmasks anomalies across dimensions.
 
-[![Watch ClearTrace Demo](docs/assets/demo_thumbnail.png)](docs/assets/demo_recording.mp4)
+<p align="center">
+  <video src="https://github.com/yashbhosale8105/ClearTrace/raw/main/docs/assets/demo_recording.mp4" width="100%" height="auto" controls autoplay muted loop>
+    Your browser does not support the video tag.
+  </video>
+</p>
 
 ---
 
