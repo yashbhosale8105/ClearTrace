@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ClearTrace – Customer Investigation Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #f9fafb;
+            --surface: #ffffff;
+            --border: #e8eaf0;
+            --text-pri: #111827;
+            --text-sec: #4b5563;
+            --text-dim: #9ca3af;
+            --blue: #2563eb;
+            --red: #dc2626;
+            --orange: #ea580c;
+            --green: #16a34a;
+            --amber: #d97706;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-pri);
+        }
+
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-logo {
+            font-weight: 700;
+            font-size: 16px;
+            color: #1e293b;
+            letter-spacing: -.3px;
+        }
+
+        .topbar-logo span {
+            color: var(--blue);
+        }
+
+        .topbar-sep {
+            color: var(--border);
+            font-size: 18px;
+        }
+
+        .topbar-sub {
+            font-size: 13px;
+            color: var(--text-sec);
+            font-weight: 500;
+        }
+
+        .back-link {
+            margin-left: auto;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            color: var(--text-sec);
+        }
+
+        .back-link:hover {
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 32px auto;
+            padding: 0 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .header-card {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .cust-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+
+        .cust-id {
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .risk-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .r-critical {
+            background: #fef2f2;
+            color: var(--red);
+            border: 1px solid #fecaca;
+        }
+
+        .r-high {
+            background: #fff7ed;
+            color: var(--orange);
+            border: 1px solid #fed7aa;
+        }
+
+        .r-medium {
+            background: #fffbeb;
+            color: var(--amber);
+            border: 1px solid #fde68a;
+        }
+
+        .r-low {
+            background: #f0fdf4;
+            color: var(--green);
+            border: 1px solid #bbf7d0;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        @media(max-width: 768px) {
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .kv-group {
+            margin-bottom: 16px;
+        }
+
+        .kv-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            letter-spacing: .05em;
+            margin-bottom: 4px;
+        }
+
+        .kv-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-pri);
+        }
+
+        .kv-value.mono {
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .ai-report {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #334155;
+            white-space: pre-wrap;
+        }
+
+        .ai-report h3 {
+            font-size: 16px;
+            color: #0f172a;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .ai-report h3:first-child {
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px;
+            font-weight: 600;
+            color: var(--text-sec);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 16px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            justify-content: flex-end;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s;
+            font-family: inherit;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-pri);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        #loading {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-sec);
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Email Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, .1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <span class="topbar-logo">Clear<span>Trace</span></span>
+        <span class="topbar-sep">|</span>
+        <span class="topbar-sub">Customer Investigation</span>
+        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+    </div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Compiling comprehensive customer report...</p>
+    </div>
+
+    <div class="container" id="content" style="display:none">
+
+        <div class="card header-card">
+            <div>
+                <div class="cust-name" id="cName">—</div>
+                <div class="cust-id" id="cUuid">—</div>
+            </div>
+            <div style="text-align:right">
+                <div id="cRiskBadge"></div>
+                <div style="font-size:12px; color:var(--text-sec); margin-top:8px">Risk Score: <strong
+                        id="cScore"></strong> / 10</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title"><i data-lucide="user"></i> Customer Identity & Overview</div>
+            <div class="grid-3">
+                <div>
+                    <div class="kv-group">
+                        <div class="kv-label">UPI ID</div>
+                        <div class="kv-value mono" id="cUpi">—</div>
+                    </div>
+                    <div class="kv-group">
+                        <div class="kv-label">Bank</div>
+                        <div class="kv-value" id="cBank">—</div>
+                    </div>
+                    <div class="kv-group">
+                        <div class="kv-label">Account No.</div>
+                        <div class="kv-value mono" id="cAcc">—</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="kv-group">
+                        <div class="kv-label">Email</div>
+                        <div class="kv-value" id="cEmail">—</div>
+                    </div>
+                    <div class="kv-group">
+                        <div class="kv-label">Phone</div>
+                        <div class="kv-value" id="cPhone">—</div>
+                    </div>
+                    <div class="kv-group">
+                        <div class="kv-label">KYC Status</div>
+                        <div class="kv-value" id="cKyc">—</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="kv-group">
+                        <div class="kv-label">Account Balance</div>
+                        <div class="kv-value" id="cBal">—</div>
+                    </div>
+                    <div class="kv-group">
+                        <div class="kv-label">Risk Tier (Bank)</div>
+                        <div class="kv-value" id="cTier">—</div>
+                    </div>
+                    <div class="kv-group">
+                        <div class="kv-label">Total Anomalies</div>
+                        <div class="kv-value" id="cAnomCount" style="color:var(--red);font-weight:700">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title"><i data-lucide="bot"></i> AI Investigation Assesment</div>
+            <div class="ai-report" id="cAiReport">Loading insights...</div>
+        </div>
+
+        <div class="card">
+            <div class="section-title"><i data-lucide="list"></i> Recent Transaction History</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Time</th>
+                        <th>Merchant</th>
+                        <th>Location</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="cTxnBody"></tbody>
+            </table>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn btn-secondary" onclick="openEmailModal()"><i data-lucide="mail"></i> Email Alert to
+                Customer</button>
+            <button class="btn btn-primary" onclick="downloadPdf()"><i data-lucide="download"></i> Generate PDF
+                Summary</button>
+        </div>
+    </div>
+
+    <!-- Email Modal -->
+    <div class="modal-overlay" id="emailModal" onclick="if(event.target===this)closeEmailModal()">
+        <div class="modal">
+            <h3 style="margin-bottom:16px; font-size:16px; display:flex; align-items:center; gap:8px"><i
+                    data-lucide="send"></i> Send Alert Email</h3>
+            <p style="font-size:13px; color:var(--text-sec); margin-bottom:16px">This will send an alert logically
+                generated for the customer and attach the PDF investigation summary.</p>
+            <div>
+                <label
+                    style="font-size:12px; font-weight:600; color:var(--text-sec); display:block; margin-bottom:6px">Recipient
+                    Email</label>
+                <input type="email" id="emailInput" class="kv-value"
+                    style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; outline:none">
+            </div>
+            <div id="emailStatus" style="font-size:13px; font-weight:500; margin-top:12px; display:none"></div>
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:24px">
+                <button class="btn btn-secondary" style="padding:8px 16px" onclick="closeEmailModal()">Cancel</button>
+                <button class="btn btn-primary" style="padding:8px 16px" id="sendBtn" onclick="sendAlertEmail()">Send
+                    Alert</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let custId = new URLSearchParams(window.location.search).get('cust_id');
+        if (!custId) {
+            document.getElementById('loading').innerHTML = '<p>No customer ID provided in URL.</p>';
+        } else {
+            loadData();
+        }
+
+        function getRiskClass(r) { return { CRITICAL: 'r-critical', HIGH: 'r-high', MEDIUM: 'r-medium', LOW: 'r-low' }[r] || 'r-low'; }
+
+        async function loadData() {
+            try {
+                const r = await fetch(`/api/investigate/customer/${custId}`);
+                const d = await r.json();
+                if (d.error) throw new Error(d.error);
+
+                const c = d.customer;
+
+                document.getElementById('cName').textContent = c.full_name;
+                document.getElementById('cUuid').textContent = c.customer_uuid;
+                document.getElementById('cUpi').textContent = c.upi_id;
+                document.getElementById('cBank').textContent = c.bank_name;
+                document.getElementById('cAcc').textContent = c.account_number;
+                document.getElementById('cEmail').textContent = c.email || '—';
+                document.getElementById('cPhone').textContent = c.registered_phone_number || '—';
+                document.getElementById('cKyc').textContent = c.kyc_status;
+                document.getElementById('cTier').textContent = c.risk_tier;
+                document.getElementById('cBal').textContent = '₹' + parseFloat(c.account_balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+                document.getElementById('cAnomCount').textContent = d.all_anomalies_count;
+                document.getElementById('cScore').textContent = d.overall_risk_score;
+
+                const rcls = getRiskClass(d.risk_level);
+                document.getElementById('cRiskBadge').innerHTML = `<span class="risk-badge ${rcls}">${d.risk_level} RISK</span>`;
+
+                // Clean AI Report markdown for HTML display
+                let reportHtml = d.ai_report
+                    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                    .replace(/^## (.*$)/gim, '<h3>$1</h3>')
+                    .replace(/^\*\*([^*]+)\*\*(.*)/gim, '<strong>$1</strong>$2')
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n\n/g, '<br><br>');
+                document.getElementById('cAiReport').innerHTML = reportHtml;
+
+                // Transactions
+                const tb = document.getElementById('cTxnBody');
+                d.all_customer_txns.forEach(t => {
+                    const isAnom = d.anomalies.some(a => a.transaction.transaction_uuid === t.transaction_uuid);
+                    const tr = document.createElement('tr');
+                    if (isAnom) tr.style.backgroundColor = '#fef2f2';
+                    tr.innerHTML = `
+          <td><code style="font-size:11px;color:${isAnom ? 'var(--red)' : 'var(--text-sec)'}">${t.transaction_uuid}</code> ${isAnom ? '<span style="color:var(--red);font-size:10px;font-weight:700">⚠ FLAGGED</span>' : ''}</td>
+          <td style="font-size:12px">${t.transaction_timestamp}</td>
+          <td>${t.merchant_name}</td>
+          <td>${t.transaction_location}</td>
+          <td style="font-weight:600">₹${parseFloat(t.transaction_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td><span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#f1f5f9;border:1px solid #cbd5e1">${t.transaction_status}</span></td>
+        `;
+                    tb.appendChild(tr);
+                });
+
+                document.getElementById('emailInput').value = c.email || '';
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                lucide.createIcons();
+            } catch (e) {
+                document.getElementById('loading').innerHTML = `<p style="color:var(--red)">Failed to load data: ${e.message}</p>`;
+            }
+        }
+
+        function downloadPdf() {
+            const a = document.createElement('a');
+            a.href = `/api/generate_customer_report/${custId}`;
+            document.body.appendChild(a); a.click(); a.remove();
+        }
+
+        function openEmailModal() { document.getElementById('emailModal').classList.add('show'); }
+        function closeEmailModal() { document.getElementById('emailModal').classList.remove('show'); document.getElementById('emailStatus').style.display = 'none'; }
+
+        async function sendAlertEmail() {
+            const email = document.getElementById('emailInput').value;
+            if (!email) return alert('Enter an email address');
+
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true; btn.textContent = 'Sending...';
+            const status = document.getElementById('emailStatus');
+            status.style.display = 'block'; status.style.color = 'var(--text-sec)'; status.textContent = 'Generating PDF and sending email...';
+
+            try {
+                const r = await fetch('/api/send_customer_alert', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customer_uuid: custId, recipient_email: email })
+                });
+                const d = await r.json();
+                if (d.success) {
+                    status.style.color = 'var(--green)'; status.textContent = `✅ Alert sent successfully to ${email}`;
+                } else {
+                    status.style.color = 'var(--red)'; status.textContent = `❌ ${d.error}`;
+                }
+            } catch (e) {
+                status.style.color = 'var(--red)'; status.textContent = `❌ Server connection failed`;
+            }
+            btn.disabled = false; btn.textContent = 'Send Alert';
+        }
+
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

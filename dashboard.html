@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearTrace – Investigation System</title>
+    <meta name="description" content="Intelligent Investigation System for UPI and Cheque Transactions">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --sidebar-w: 220px;
+            --sidebar-collapsed: 60px;
+            --bg: #111110;
+            --bg-card: #1a1917;
+            --bg-hover: rgba(255, 255, 255, .04);
+            --border: rgba(255, 255, 255, .08);
+            --border-accent: rgba(255, 255, 255, .12);
+            --text: #e8e5e0;
+            --text-sec: #a09f9b;
+            --text-dim: #6b6966;
+            --accent: #c8b89a;
+            --accent-dim: rgba(200, 184, 154, .12);
+            --accent-border: rgba(200, 184, 154, .25);
+            --green: #7fba8a;
+            --orange: #d4845a;
+            --red: #c96666;
+            --yellow: #c9a84c;
+            --blue: #c8b89a;
+            --cyan: #c8b89a;
+        }
+
+        body {
+            font-family: 'Geist', 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            overflow: hidden
+        }
+
+        /* ═══════════════════════════════════════
+           SIDEBAR
+        ═══════════════════════════════════════ */
+        .sidebar {
+            width: var(--sidebar-w);
+            min-height: 100vh;
+            background: #161513;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: width .3s cubic-bezier(.4, 0, .2, 1);
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed)
+        }
+
+        /* Brand */
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 16px;
+            border-bottom: 1px solid var(--border);
+            min-height: 64px
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--accent);
+            letter-spacing: -.5px;
+        }
+
+        .brand-text {
+            white-space: nowrap;
+            overflow: hidden;
+            opacity: 1;
+            transition: opacity .2s .1s
+        }
+
+        .sidebar.collapsed .brand-text {
+            opacity: 0;
+            transition: opacity .15s
+        }
+
+        .brand-text h1 {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -.3px
+        }
+
+        .brand-text span {
+            font-size: 10px;
+            color: var(--text-dim);
+            display: block;
+            margin-top: -1px
+        }
+
+        /* Nav Items */
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all .15s ease;
+            position: relative;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 400;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-sec);
+        }
+
+        .nav-item.active {
+            background: rgba(200, 184, 154, .08);
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .nav-item .icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            width: 22px;
+            text-align: center;
+            transition: transform .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        /* Lucide icon global sizing */
+        .nav-item .icon svg,
+        .chip svg,
+        .input-btn svg,
+        .msg-action-btn svg,
+        .modal-btn svg,
+        .sidebar-toggle svg,
+        .cheque-card h3 svg,
+        .table-wrap h3 svg,
+        .modal h2 svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            fill: none;
+            vertical-align: middle;
+            flex-shrink: 0
+        }
+
+        .chip svg {
+            width: 13px;
+            height: 13px
+        }
+
+        .input-btn svg {
+            width: 16px;
+            height: 16px
+        }
+
+        .msg-action-btn svg {
+            width: 12px;
+            height: 12px
+        }
+
+        .nav-item:hover .icon {
+            transform: scale(1.12)
+        }
+
+        .nav-item .label {
+            white-space: nowrap;
+            overflow: hidden;
+            opacity: 1;
+            transition: opacity .2s .1s
+        }
+
+        .sidebar.collapsed .nav-item .label {
+            opacity: 0;
+            transition: opacity .15s
+        }
+
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding: 11px 0
+        }
+
+        /* Tooltip for collapsed state */
+        .nav-item .tooltip {
+            position: absolute;
+            left: calc(var(--sidebar-collapsed) + 8px);
+            background: #1e1c1a;
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateX(-6px);
+            transition: all .2s;
+            border: 1px solid var(--border);
+            z-index: 200;
+        }
+
+        .sidebar.collapsed .nav-item:hover .tooltip {
+            opacity: 1;
+            transform: translateX(0)
+        }
+
+        /* Collapse toggle */
+        .sidebar-toggle {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dim);
+            transition: color .2s;
+            border: none;
+            background: none;
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        .sidebar-toggle:hover {
+            color: var(--text)
+        }
+
+        .sidebar-toggle .arrow {
+            transition: transform .3s;
+            display: inline-block
+        }
+
+        .sidebar.collapsed .sidebar-toggle .arrow {
+            transform: rotate(180deg)
+        }
+
+        /* Divider */
+        .nav-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 8px 14px
+        }
+
+        .nav-section-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            padding: 6px 14px 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            opacity: 1;
+            transition: opacity .2s .1s;
+        }
+
+        .sidebar.collapsed .nav-section-label {
+            opacity: 0;
+            transition: opacity .15s
+        }
+
+        /* ═══════════════════════════════════════
+           MAIN CONTENT
+        ═══════════════════════════════════════ */
+        .main {
+            margin-left: var(--sidebar-w);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            transition: margin-left .3s cubic-bezier(.4, 0, .2, 1);
+            width: calc(100vw - var(--sidebar-w))
+        }
+
+        .sidebar.collapsed~.main {
+            margin-left: var(--sidebar-collapsed);
+            width: calc(100vw - var(--sidebar-collapsed))
+        }
+
+        .section {
+            display: none;
+            flex: 1;
+            overflow: hidden
+        }
+
+        .section.active {
+            display: flex;
+            flex-direction: column
+        }
+
+        /* ═══ CHATBOT ═══ */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 16px
+        }
+
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px
+        }
+
+        .chat-area::-webkit-scrollbar {
+            width: 4px
+        }
+
+        .chat-area::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            max-width: 80%;
+            animation: msgIn .3s ease
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse
+        }
+
+        .message.bot {
+            align-self: flex-start
+        }
+
+        @keyframes msgIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .msg-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0
+        }
+
+        .bot .msg-avatar {
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            color: var(--accent);
+            font-size: 12px;
+        }
+
+        .user .msg-avatar {
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .msg-bubble {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.65
+        }
+
+        .bot .msg-bubble {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text)
+        }
+
+        .user .msg-bubble {
+            background: rgba(200, 184, 154, .12);
+            border: 1px solid var(--accent-border);
+            color: var(--text)
+        }
+
+        .msg-bubble h2 {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 8px 0 4px;
+            color: var(--text)
+        }
+
+        .msg-bubble h3 {
+            font-size: 13px;
+            margin: 8px 0 4px;
+            color: var(--accent)
+        }
+
+        .msg-bubble table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 6px 0;
+            font-size: 11px
+        }
+
+        .msg-bubble th,
+        .msg-bubble td {
+            padding: 5px 8px;
+            border: 1px solid var(--border);
+            text-align: left
+        }
+
+        .msg-bubble th {
+            background: rgba(255, 255, 255, .03);
+            color: var(--text-sec);
+            font-weight: 600
+        }
+
+        .msg-bubble code {
+            background: rgba(255, 255, 255, .06);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 11px;
+            color: var(--accent);
+            font-family: 'Geist Mono', monospace;
+        }
+
+        .msg-bubble strong {
+            color: var(--text)
+        }
+
+        .msg-bubble hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 8px 0
+        }
+
+        .msg-bubble ul,
+        .msg-bubble ol {
+            padding-left: 16px;
+            margin: 4px 0
+        }
+
+        .msg-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            flex-wrap: wrap
+        }
+
+        .msg-action-btn {
+            padding: 5px 11px;
+            border-radius: 5px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-sec);
+            font-size: 11px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all .15s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .msg-action-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-accent);
+            color: var(--text)
+        }
+
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            gap: 4px;
+            align-items: center
+        }
+
+        .typing-indicator.show {
+            display: flex
+        }
+
+        .typing-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: bounce 1.4s infinite ease-in-out
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: .15s
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: .3s
+        }
+
+        @keyframes bounce {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: .4
+            }
+
+            30% {
+                transform: translateY(-6px);
+                opacity: 1
+            }
+        }
+
+        .chat-input-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 0;
+            border-top: 1px solid var(--border)
+        }
+
+        .chat-input-bar textarea {
+            flex: 1;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            min-height: 40px;
+            max-height: 100px;
+            line-height: 1.4
+        }
+
+        .chat-input-bar textarea:focus {
+            border-color: var(--border-accent)
+        }
+
+        .chat-input-bar textarea::placeholder {
+            color: var(--text-dim)
+        }
+
+        .input-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all .2s;
+            flex-shrink: 0
+        }
+
+        .input-btn.send {
+            background: rgba(200, 184, 154, .14);
+            border: 1px solid var(--accent-border);
+            color: var(--accent);
+        }
+
+        .input-btn.send:hover {
+            background: rgba(200, 184, 154, .22);
+        }
+
+        .input-btn.mic {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid var(--border)
+        }
+
+        .input-btn.mic:hover {
+            background: var(--bg-hover);
+            color: var(--text-sec);
+            border-color: var(--border-accent)
+        }
+
+        .input-btn.mic.recording {
+            background: rgba(201, 102, 102, .1);
+            color: var(--red);
+            border-color: rgba(201, 102, 102, .3);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(201, 102, 102, .2)
+            }
+
+            50% {
+                box-shadow: 0 0 0 5px transparent
+            }
+        }
+
+        .quick-chips {
+            display: flex;
+            gap: 6px;
+            padding: 8px 0;
+            overflow-x: auto;
+            flex-wrap: wrap
+        }
+
+        .chip {
+            padding: 6px 13px;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all .15s;
+            font-family: inherit;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .chip:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-accent);
+            color: var(--text-sec)
+        }
+
+        /* ═══ INSIGHTS ═══ */
+        .dash-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px
+        }
+
+        .dash-scroll::-webkit-scrollbar {
+            width: 5px
+        }
+
+        .dash-scroll::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px
+        }
+
+        .kpi {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            transition: border-color .15s;
+        }
+
+        .kpi:hover {
+            border-color: var(--border-accent);
+        }
+
+        .kpi .icon {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--text-dim)
+        }
+
+        .kpi .val {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: -.3px
+        }
+
+        .kpi .lbl {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 3px;
+            font-weight: 400
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 18px
+        }
+
+        .chart-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            transition: border-color .15s
+        }
+
+        .chart-box:hover {
+            border-color: var(--border-accent)
+        }
+
+        .chart-box h3 {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-sec);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 240px
+        }
+
+        /* ═══ HISTORY ═══ */
+        .table-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto
+        }
+
+        .table-wrap h3 {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-sec);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dtable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px
+        }
+
+        .dtable thead th {
+            padding: 8px 10px;
+            text-align: left;
+            background: rgba(255, 255, 255, .02);
+            color: var(--text-dim);
+            font-weight: 500;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap
+        }
+
+        .dtable tbody td {
+            padding: 7px 10px;
+            border-bottom: 1px solid rgba(55, 65, 81, .3);
+            color: var(--text-sec);
+            white-space: nowrap
+        }
+
+        .dtable tbody tr {
+            transition: background .15s
+        }
+
+        .dtable tbody tr:hover {
+            background: rgba(99, 102, 241, .04)
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase
+        }
+
+        .badge.critical {
+            background: rgba(201, 102, 102, .12);
+            color: var(--red)
+        }
+
+        .badge.high {
+            background: rgba(212, 132, 90, .12);
+            color: var(--orange)
+        }
+
+        .badge.medium {
+            background: rgba(201, 168, 76, .12);
+            color: var(--yellow)
+        }
+
+        .badge.low {
+            background: rgba(127, 186, 138, .12);
+            color: var(--green)
+        }
+
+        .anom-tag {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 500;
+            margin: 1px 2px;
+            background: rgba(99, 102, 241, .08);
+            color: var(--blue)
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: var(--text-sec);
+            font-size: 12px;
+            font-family: inherit;
+            outline: none
+        }
+
+        .filter-bar select:focus,
+        .filter-bar input:focus {
+            border-color: var(--border-accent)
+        }
+
+        /* ═══ CHEQUES ═══ */
+        .cheque-section {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1
+        }
+
+        .cheque-section::-webkit-scrollbar {
+            width: 5px
+        }
+
+        .cheque-section::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px
+        }
+
+        .cheque-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px
+        }
+
+        .cheque-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px
+        }
+
+        .cheque-card h3 {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-sec);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .upload-zone {
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .15s
+        }
+
+        .upload-zone:hover {
+            border-color: var(--border-accent);
+            background: rgba(255, 255, 255, .02)
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent-border);
+            background: var(--accent-dim)
+        }
+
+        .upload-zone p {
+            color: var(--text-sec);
+            font-size: 13px
+        }
+
+        .upload-zone .icon {
+            font-size: 36px;
+            margin-bottom: 8px
+        }
+
+        .cheque-result {
+            margin-top: 14px
+        }
+
+        .cheque-result .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(55, 65, 81, .3);
+            font-size: 12px
+        }
+
+        .cheque-result .item:last-child {
+            border: none
+        }
+
+        .cheque-result .k {
+            color: var(--text-dim)
+        }
+
+        .cheque-result .v {
+            color: var(--text);
+            font-weight: 500
+        }
+
+        .validation-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 12px
+        }
+
+        .cheque-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 10px;
+            margin-top: 12px
+        }
+
+        .cheque-list img {
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all .2s
+        }
+
+        .cheque-list img:hover {
+            border-color: var(--blue);
+            transform: scale(1.03)
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .6);
+            z-index: 200;
+            align-items: center;
+            justify-content: center
+        }
+
+        .modal-overlay.show {
+            display: flex
+        }
+
+        .modal {
+            background: #1a1917;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            width: 90%;
+            max-width: 380px;
+            animation: modalIn .2s ease
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(.95)
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1)
+            }
+        }
+
+        .modal h2 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .modal p {
+            font-size: 12px;
+            color: var(--text-sec);
+            margin-bottom: 14px;
+            line-height: 1.6
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 12px;
+            outline: none;
+            margin-bottom: 12px;
+            font-family: inherit
+        }
+
+        .modal input:focus {
+            border-color: var(--border-accent)
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 8px
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .modal-btn.primary {
+            background: rgba(200, 184, 154, .15);
+            border: 1px solid var(--accent-border);
+            color: var(--accent)
+        }
+
+        .modal-btn.primary:hover {
+            background: rgba(200, 184, 154, .22)
+        }
+
+        .modal-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-sec)
+        }
+
+        .modal-btn.secondary:hover {
+            background: var(--bg-hover)
+        }
+
+        .audio-player {
+            margin-top: 8px
+        }
+
+        .audio-player audio {
+            width: 100%;
+            height: 32px;
+            border-radius: 6px
+        }
+
+        @media(max-width:900px) {
+            .sidebar {
+                width: var(--sidebar-collapsed)
+            }
+
+            .sidebar .brand-text,
+            .sidebar .nav-item .label,
+            .sidebar .nav-section-label {
+                opacity: 0
+            }
+
+            .main {
+                margin-left: var(--sidebar-collapsed);
+                width: calc(100vw - var(--sidebar-collapsed))
+            }
+
+            .chart-row,
+            .cheque-grid {
+                grid-template-columns: 1fr
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr)
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">CT</div>
+            <div class="brand-text">
+                <h1>ClearTrace</h1>
+                <span>Investigation System</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Main</div>
+            <button class="nav-item active" onclick="go('chatbot')" id="nav-chatbot">
+                <span class="icon"><i data-lucide="message-square"></i></span><span class="label">Chatbot</span>
+                <span class="tooltip">Chatbot</span>
+            </button>
+            <button class="nav-item" onclick="go('history')" id="nav-history">
+                <span class="icon"><i data-lucide="clock"></i></span><span class="label">History</span>
+                <span class="tooltip">History</span>
+            </button>
+            <button class="nav-item" onclick="go('cheques')" id="nav-cheques">
+                <span class="icon"><i data-lucide="landmark"></i></span><span class="label">Cheques</span>
+                <span class="tooltip">Cheques</span>
+            </button>
+            <a class="nav-item" href="/analytics" style="text-decoration:none">
+                <span class="icon"><i data-lucide="layout-dashboard"></i></span><span class="label">Insights</span>
+                <span class="tooltip">Insights</span>
+            </a>
+
+            <div class="nav-divider"></div>
+            <div class="nav-section-label">Settings</div>
+            <button class="nav-item" onclick="openApiKeyModal()">
+                <span class="icon"><i data-lucide="key"></i></span><span class="label">API Key</span>
+                <span class="tooltip">API Key</span>
+            </button>
+        </nav>
+
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse">
+            <span class="arrow"><i data-lucide="chevron-left" style="width:16px;height:16px"></i></span>
+        </button>
+    </aside>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="main">
+
+        <!-- CHATBOT -->
+        <div class="section active" id="sec-chatbot">
+            <div class="chat-container">
+                <div class="quick-chips">
+                    <button class="chip" onclick="sendMessage('investigate')"><i data-lucide="search"
+                            style="width:13px;height:13px"></i> Investigate UPI</button>
+                    <button class="chip" onclick="sendMessage('flagged')"><i data-lucide="flag"
+                            style="width:13px;height:13px"></i> Flagged</button>
+                    <button class="chip" onclick="sendMessage('customer list')"><i data-lucide="users"
+                            style="width:13px;height:13px"></i> Customers</button>
+                    <button class="chip" onclick="sendMessage('report')"><i data-lucide="file-text"
+                            style="width:13px;height:13px"></i> PDF Report</button>
+                    <button class="chip" onclick="sendMessage('voice')"><i data-lucide="volume-2"
+                            style="width:13px;height:13px"></i> Voice</button>
+                </div>
+                <div class="chat-area" id="chatArea">
+                    <div class="message bot">
+                        <div class="msg-avatar">🛡</div>
+                        <div class="msg-bubble">
+                            <h2>Welcome to ClearTrace</h2>
+                            <p>I'm your AI investigation assistant for UPI and Cheque transactions. I analyze customer
+                                data, detect anomalies, and generate explainable investigation reports.</p>
+                            <ul>
+                                <li><strong>Investigate UPI</strong> – Analyze a customer's transactions</li>
+                                <li><strong>Flagged</strong> – View anomalous transactions</li>
+                                <li><strong>Customers</strong> – Browse customer directory</li>
+                            </ul>
+                            <p style="color:var(--text-dim);font-size:11px;margin-top:8px">💡 Set your Gemini API key
+                                via the 🔑 in the sidebar for AI-powered analysis.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+                <div class="chat-input-bar">
+                    <textarea id="chatInput" rows="1" placeholder="Type a message or UPI ID..."
+                        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+                    <button class="input-btn mic" id="micBtn" onclick="toggleMic()" title="Voice Input"><i
+                            data-lucide="mic" style="width:16px;height:16px"></i></button>
+                    <button class="input-btn send" onclick="sendCurrent()" title="Send"><i data-lucide="send"
+                            style="width:16px;height:16px"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- INSIGHTS -->
+        <div class="section" id="sec-insights">
+            <div class="dash-scroll">
+                <div class="kpi-grid">
+                    <div class="kpi">
+                        <div class="icon">👥</div>
+                        <div class="val" id="k-cust">-</div>
+                        <div class="lbl">Customers</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="icon">💳</div>
+                        <div class="val" id="k-txn">-</div>
+                        <div class="lbl">Transactions</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="icon">🏪</div>
+                        <div class="val" id="k-merch">-</div>
+                        <div class="lbl">Merchants</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="icon">💰</div>
+                        <div class="val" id="k-vol">-</div>
+                        <div class="lbl">Total Volume</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="icon">📈</div>
+                        <div class="val" id="k-avg">-</div>
+                        <div class="lbl">Avg Transaction</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="icon">🚨</div>
+                        <div class="val" id="k-flag">-</div>
+                        <div class="lbl">Flagged</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="icon">⚠️</div>
+                        <div class="val" id="k-rate">-</div>
+                        <div class="lbl">Flag Rate</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="icon">👤</div>
+                        <div class="val" id="k-risk">-</div>
+                        <div class="lbl">At Risk</div>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <h3>Risk Distribution</h3>
+                        <div class="chart-wrap"><canvas id="cRisk"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Anomaly Types</h3>
+                        <div class="chart-wrap"><canvas id="cAnom"></canvas></div>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <h3>Transaction Amounts</h3>
+                        <div class="chart-wrap"><canvas id="cAmt"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Top Merchants by Volume</h3>
+                        <div class="chart-wrap"><canvas id="cMerch"></canvas></div>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <h3>Transactions by Location</h3>
+                        <div class="chart-wrap"><canvas id="cLoc"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Bank Distribution</h3>
+                        <div class="chart-wrap"><canvas id="cBank"></canvas></div>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <h3>Customer Age Groups</h3>
+                        <div class="chart-wrap"><canvas id="cAge"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Account Balance</h3>
+                        <div class="chart-wrap"><canvas id="cBal"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="section" id="sec-history">
+            <div class="dash-scroll">
+
+                <!-- Header -->
+                <div
+                    style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+                    <div>
+                        <h2 style="font-size:16px;font-weight:700;margin:0">
+                            <i data-lucide="users"
+                                style="width:16px;height:16px;vertical-align:middle;margin-right:7px;color:var(--accent)"></i>
+                            Customer Behaviour Profiles
+                        </h2>
+                        <p style="font-size:12px;color:var(--text-dim);margin-top:3px">Click any row to view full
+                            profile &amp; investigate</p>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <span id="hResultCount" style="font-size:11px;color:var(--text-dim)"></span>
+                    </div>
+                </div>
+
+                <!-- Loading state -->
+                <div id="hLoading" style="text-align:center;padding:40px;color:var(--text-dim);font-size:13px">
+                    <div
+                        style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px">
+                    </div>
+                    Computing customer profiles…
+                </div>
+
+                <!-- Filters -->
+                <div id="hFilters"
+                    style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;display:none;gap:10px;align-items:center;flex-wrap:wrap">
+                    <input type="text" id="hSearch" placeholder="Search name, UPI ID, UUID, bank…"
+                        oninput="hApplyFilters()"
+                        style="flex:1;min-width:180px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:12px;color:var(--text-pri);font-family:inherit;outline:none">
+                    <select id="hRiskFilter" onchange="hApplyFilters()"
+                        style="background:var(--bg-main);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--text-sec);font-family:inherit;outline:none">
+                        <option value="">All Risk Levels</option>
+                        <option value="CRITICAL">Critical</option>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                    </select>
+                    <select id="hBehavFilter" onchange="hApplyFilters()"
+                        style="background:var(--bg-main);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--text-sec);font-family:inherit;outline:none">
+                        <option value="">All Behaviours</option>
+                        <option value="DEVICE_ANOMALY">Device Anomaly</option>
+                        <option value="IP_ANOMALY">IP Anomaly</option>
+                        <option value="LOCATION_ANOMALY">Location Anomaly</option>
+                        <option value="LARGE_TXNS">Large Transactions</option>
+                        <option value="RAPID_TXNS">Rapid Transactions</option>
+                        <option value="BALANCE_EXCEEDED">Balance Exceeded</option>
+                        <option value="NORMAL">Normal</option>
+                    </select>
+                    <select id="hBankFilter" onchange="hApplyFilters()"
+                        style="background:var(--bg-main);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--text-sec);font-family:inherit;outline:none">
+                        <option value="">All Banks</option>
+                    </select>
+                </div>
+
+                <!-- Customer behaviour table -->
+                <div id="hTableWrap" style="display:none" class="table-wrap">
+                    <table class="dtable" id="hCustTable">
+                        <thead>
+                            <tr>
+                                <th>Customer UUID</th>
+                                <th>Name</th>
+                                <th>UPI ID</th>
+                                <th>Bank</th>
+                                <th>Location</th>
+                                <th>Txns</th>
+                                <th>Total Spent</th>
+                                <th>Anomalies</th>
+                                <th>Risk Score</th>
+                                <th>Behaviour Tags</th>
+                                <th>Risk</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hCustBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Detail Side Panel (for History tab) -->
+        <div id="hDetailPanel"
+            style="position:fixed;top:0;right:0;width:400px;height:100vh;background:var(--bg-card);border-left:1px solid var(--border);z-index:300;overflow-y:auto;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)">
+            <div
+                style="position:sticky;top:0;background:var(--bg-card);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:10px;z-index:1">
+                <div>
+                    <div style="font-size:13px;font-weight:700" id="hdName">—</div>
+                    <div style="font-size:11px;color:var(--text-dim)" id="hdUuid">—</div>
+                </div>
+                <button onclick="hClosePanel()"
+                    style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;color:var(--text-sec);font-family:inherit">✕
+                    Close</button>
+            </div>
+            <div style="padding:18px" id="hdBody"></div>
+        </div>
+
+        <!-- CHEQUES -->
+        <div class="section" id="sec-cheques">
+            <div class="cheque-section">
+                <div class="cheque-grid">
+                    <div class="cheque-card">
+                        <h3><i data-lucide="upload-cloud"
+                                style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>Upload Cheque
+                            for Analysis</h3>
+                        <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">Upload a cheque image to
+                            extract details via AI and validate against customer records.</p>
+                        <div class="upload-zone" id="uploadZone"
+                            ondragover="event.preventDefault();this.classList.add('dragover')"
+                            ondragleave="this.classList.remove('dragover')"
+                            ondrop="event.preventDefault();this.classList.remove('dragover');uploadCheque(event.dataTransfer.files[0])"
+                            onclick="document.getElementById('fileInput').click()">
+                            <div class="icon">📎</div>
+                            <p><strong>Drop cheque image here</strong></p>
+                            <p style="font-size:11px;color:var(--text-dim);margin-top:4px">PNG, JPG supported</p>
+                            <input type="file" id="fileInput" accept="image/*" style="display:none"
+                                onchange="uploadCheque(this.files[0])">
+                        </div>
+                        <div id="chequeResult" class="cheque-result" style="display:none"></div>
+                    </div>
+                    <div class="cheque-card">
+                        <h3><i data-lucide="shield-check"
+                                style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>Cheque
+                            Investigation</h3>
+                        <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">System capabilities:</p>
+                        <ul style="font-size:12px;color:var(--text-sec);padding-left:16px;line-height:1.8">
+                            <li>Extract account number, IFSC, amount, date from cheque images</li>
+                            <li>Cross-validate cheque data against customer records</li>
+                            <li>Verify issuer name and account ownership</li>
+                            <li>Check sufficiency of account balance</li>
+                            <li>Correlate UPI transaction data across datasets</li>
+                            <li>Identify inconsistencies between payment data and records</li>
+                            <li>Use Generative AI for reasoning and report generation</li>
+                        </ul>
+                        <h3 style="margin-top:16px"><i data-lucide="folder-open"
+                                style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>Available
+                            Cheques</h3>
+                        <div class="cheque-list" id="chequeList"></div>
+                    </div>
+                </div>
+                <div class="cheque-grid" style="margin-top:16px">
+                    <div class="cheque-card" id="chequeDetailCard" style="display:none">
+                        <h3><i data-lucide="scan-line"
+                                style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>Extracted Data
+                        </h3>
+                        <div id="extractedData"></div>
+                    </div>
+                    <div class="cheque-card" id="chequeValidationCard" style="display:none">
+                        <h3><i data-lucide="check-circle"
+                                style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>Validation
+                            Results</h3>
+                        <div id="validationResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Detail + Email Modal -->
+    <div class="modal-overlay" id="txnModal" onclick="if(event.target===this)closeTxnModal()">
+        <div class="modal" style="max-width:660px;width:94vw">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+                <h2 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px">
+                    <i data-lucide="search" style="width:18px;height:18px;color:var(--accent)"></i>
+                    Transaction Investigation
+                </h2>
+                <button onclick="closeTxnModal()"
+                    style="background:none;border:none;cursor:pointer;color:var(--text-dim);padding:4px">
+                    <i data-lucide="x" style="width:18px;height:18px"></i>
+                </button>
+            </div>
+
+            <!-- Risk Banner -->
+            <div id="txnRiskBanner"
+                style="border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;font-weight:600"></div>
+
+            <!-- Two-col grid -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px">
+                    <div
+                        style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+                        Customer</div>
+                    <div id="txnCustInfo" style="font-size:12px;color:var(--text-sec);line-height:2"></div>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px">
+                    <div
+                        style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+                        Transaction</div>
+                    <div id="txnTxnInfo" style="font-size:12px;color:var(--text-sec);line-height:2"></div>
+                </div>
+            </div>
+
+            <!-- Anomalies -->
+            <div
+                style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+                <div
+                    style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+                    Detected Anomalies</div>
+                <div id="txnAnomalies"></div>
+            </div>
+
+            <!-- Email Section -->
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px">
+                <div
+                    style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+                    Officer Actions</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <div style="flex:1;min-width:200px">
+                        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px">Send Alert
+                            Email To</label>
+                        <input id="txnEmailInput" type="email" placeholder="customer@email.com"
+                            style="width:100%;box-sizing:border-box;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text-pri);outline:none">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;padding-top:16px">
+                        <button id="sendEmailBtn" onclick="sendAlertEmail()"
+                            style="display:flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+                            <i data-lucide="send" style="width:13px;height:13px"></i> Send Alert Email
+                        </button>
+                        <button onclick="downloadTxnReport()"
+                            style="display:flex;align-items:center;gap:6px;background:var(--bg-main);color:var(--text-sec);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+                            <i data-lucide="download" style="width:13px;height:13px"></i> Download PDF Report
+                        </button>
+                    </div>
+                </div>
+                <div id="txnEmailStatus" style="margin-top:10px;font-size:12px;display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div class="modal-overlay" id="apiKeyModal">
+        <div class="modal">
+            <h2><i data-lucide="key" style="width:18px;height:18px;vertical-align:middle;margin-right:8px"></i>Gemini
+                API Key</h2>
+            <p>Enter your Google Gemini API key for AI-powered investigation. Get one at <a
+                    href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--cyan)">AI Studio</a>.
+            </p>
+            <input type="password" id="apiKeyInput" placeholder="API key...">
+            <div class="modal-btns">
+                <button class="modal-btn secondary" onclick="closeApiKeyModal()"><i data-lucide="x"
+                        style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Cancel</button>
+                <button class="modal-btn primary" onclick="saveApiKey()"><i data-lucide="save"
+                        style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── State ──
+        const SESSION_ID = 's_' + Math.random().toString(36).slice(2, 10);
+        let dashData = null, allFlagged = [], isRecording = false, recognition = null;
+        const charts = {};
+
+        // ── Sidebar ──
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed') }
+        function go(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById('sec-' + name).classList.add('active');
+            document.getElementById('nav-' + name).classList.add('active');
+            if ((name === 'insights' || name === 'history') && !dashData) loadDashboard();
+            if (name === 'cheques') loadCheques();
+            setTimeout(() => Object.values(charts).forEach(c => c && c.resize && c.resize()), 100);
+        }
+
+        // ═══════════════════════════════════════
+        // CHATBOT
+        // ═══════════════════════════════════════
+        function addMsg(text, type = 'bot', extra = {}) {
+            const area = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'message ' + type;
+            div.innerHTML = `<div class="msg-avatar">${type === 'user' ? '👤' : '🛡'}</div><div class="msg-bubble">${renderMD(text)}</div>`;
+            if (extra.type === 'investigation' || extra.type === 'flagged') {
+                const a = document.createElement('div'); a.className = 'msg-actions';
+                a.innerHTML = '<button class="msg-action-btn" onclick="sendMessage(\'report\')"><i data-lucide="file-text" style="width:12px;height:12px;vertical-align:middle;margin-right:4px"></i>PDF</button><button class="msg-action-btn" onclick="sendMessage(\'voice\')"><i data-lucide="volume-2" style="width:12px;height:12px;vertical-align:middle;margin-right:4px"></i>Voice</button>'; lucide.createIcons();
+                div.querySelector('.msg-bubble').appendChild(a);
+            }
+            area.appendChild(div); area.scrollTop = area.scrollHeight;
+        }
+        function renderMD(t) {
+            if (!t) return '';
+            return t.replace(/^### (.*$)/gm, '<h3>$1</h3>').replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`(.*?)`/g, '<code>$1</code>')
+                .replace(/^---$/gm, '<hr>')
+                .replace(/^\|(.+)\|$/gm, m => { const c = m.split('|').filter(c => c.trim()); if (c.every(c => /^[\s-:]+$/.test(c))) return ''; return '<tr>' + c.map(c => '<td>' + c.trim() + '</td>').join('') + '</tr>'; })
+                .replace(/^- (.*$)/gm, '<li>$1</li>')
+                .replace(/((<tr>.*?<\/tr>\s*(<br>)?)+)/g, m => '<table>' + m.replace(/<br>/g, '') + '</table>')
+                .replace(/((<li>.*?<\/li>\s*(<br>)?)+)/g, m => '<ul>' + m.replace(/<br>/g, '') + '</ul>')
+                .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+        }
+        function showTyping() { document.getElementById('typingIndicator').classList.add('show') }
+        function hideTyping() { document.getElementById('typingIndicator').classList.remove('show') }
+        async function sendMessage(text) {
+            if (!text || !text.trim()) return; addMsg(text, 'user'); showTyping();
+            try {
+                const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, session_id: SESSION_ID }) }); const d = await r.json(); hideTyping();
+                if (d.type === 'pdf') { addMsg(d.reply, 'bot', d); downloadPDF(); }
+                else if (d.type === 'voice') { addMsg(d.reply, 'bot'); playVoice(); }
+                else addMsg(d.reply, 'bot', d);
+            } catch (e) { hideTyping(); addMsg('⚠️ Connection error.', 'bot'); }
+        }
+        function sendCurrent() { const i = document.getElementById('chatInput'); if (i.value.trim()) { sendMessage(i.value.trim()); i.value = ''; i.style.height = 'auto'; } }
+        function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCurrent(); } }
+        function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
+        async function downloadPDF() { try { const r = await fetch('/api/report/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: SESSION_ID }) }); if (r.ok) { const b = await r.blob(); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'ClearTrace_Report.pdf'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(u); } } catch (e) { } }
+        async function playVoice() { try { const r = await fetch('/api/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: SESSION_ID }) }); if (r.ok) { const b = await r.blob(); const u = URL.createObjectURL(b); const msgs = document.querySelectorAll('.message.bot .msg-bubble'); if (msgs.length) { const l = msgs[msgs.length - 1]; const d = document.createElement('div'); d.className = 'audio-player'; const a = document.createElement('audio'); a.controls = true; a.src = u; d.appendChild(a); l.appendChild(d); a.play(); } } } catch (e) { } }
+        function toggleMic() {
+            const btn = document.getElementById('micBtn');
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { addMsg('⚠️ Voice not supported.', 'bot'); return; }
+            if (isRecording) { recognition.stop(); btn.classList.remove('recording'); isRecording = false; return; }
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)(); recognition.lang = 'en-IN'; recognition.interimResults = false;
+            recognition.onresult = e => { document.getElementById('chatInput').value = e.results[0][0].transcript; btn.classList.remove('recording'); isRecording = false; sendCurrent(); };
+            recognition.onerror = recognition.onend = () => { btn.classList.remove('recording'); isRecording = false; };
+            recognition.start(); btn.classList.add('recording'); isRecording = true;
+        }
+
+        // ═══════════════════════════════════════
+        // DASHBOARD
+        // ═══════════════════════════════════════
+        Chart.defaults.color = '#6b6966'; Chart.defaults.borderColor = 'rgba(255,255,255,.06)'; Chart.defaults.font.family = 'Geist, Inter, sans-serif'; Chart.defaults.font.size = 11;
+        Chart.defaults.plugins.legend.labels.usePointStyle = true; Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+        const C = { blue: '#c8b89a', cyan: '#9db5b0', green: '#7fba8a', orange: '#d4845a', red: '#c96666', purple: '#a89bbf', yellow: '#c9a84c', pink: '#c49494', teal: '#7fb3a5', indigo: '#9fa5c0' };
+        const PAL = Object.values(C), PALA = PAL.map(c => c + '33');
+        function fmt(n) { return new Intl.NumberFormat('en-IN').format(Math.round(n)) }
+        function fmtCur(n) { if (n >= 1e7) return '₹' + (n / 1e7).toFixed(1) + 'Cr'; if (n >= 1e5) return '₹' + (n / 1e5).toFixed(1) + 'L'; if (n >= 1e3) return '₹' + (n / 1e3).toFixed(1) + 'K'; return '₹' + Math.round(n) }
+        async function loadDashboard() { try { const r = await fetch('/api/dashboard/stats'); dashData = await r.json(); renderKPIs(); renderCharts(); renderHistory(); renderSummary(); } catch (e) { console.error(e); } }
+        function renderKPIs() {
+            const k = dashData.kpis, r = dashData.risk_distribution;
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            set('k-cust', fmt(k.total_customers));
+            set('k-txn', fmt(k.total_transactions));
+            set('k-merch', fmt(k.total_merchants));
+            set('k-vol', fmtCur(k.total_volume));
+            set('k-avg', fmtCur(k.avg_transaction));
+            set('k-flag', fmt(k.flagged_count));
+            set('k-rate', k.flag_rate + '%');
+            set('k-risk', fmt(k.customers_at_risk));
+            set('h-flag', fmt(k.flagged_count));
+            set('h-crit', fmt(r.CRITICAL));
+            set('h-high', fmt(r.HIGH));
+            set('h-med', fmt(r.MEDIUM));
+            set('h-low', fmt(r.LOW));
+            set('h-risk', fmt(k.customers_at_risk));
+        }
+        function mk(id, type, labels, data, colors, opts = {}) { if (charts[id]) charts[id].destroy(); charts[id] = new Chart(document.getElementById(id), { type, data: { labels, datasets: [{ data, backgroundColor: colors || PALA, borderColor: (colors || PAL), borderWidth: 1.5, borderRadius: type === 'bar' ? 6 : 0, hoverOffset: 6 }] }, options: { responsive: true, maintainAspectRatio: false, ...opts } }) }
+        function renderCharts() {
+            const d = dashData, r = d.risk_distribution, a = d.anomaly_types;
+            mk('cRisk', 'doughnut', ['Critical', 'High', 'Medium', 'Low'], [r.CRITICAL, r.HIGH, r.MEDIUM, r.LOW], [C.red, C.orange, C.yellow, C.green], { cutout: '62%', plugins: { legend: { position: 'bottom' } } });
+            mk('cAnom', 'bar', Object.keys(a), Object.values(a), null, { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { display: false } } } });
+            mk('cAmt', 'bar', Object.keys(d.amount_distribution), Object.values(d.amount_distribution), null, { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } });
+            mk('cMerch', 'bar', Object.keys(d.top_merchants).map(n => n.length > 16 ? n.slice(0, 16) + '…' : n), Object.values(d.top_merchants), null, { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { callback: v => fmtCur(v) } }, y: { grid: { display: false } } } });
+            mk('cLoc', 'polarArea', Object.keys(d.location_distribution), Object.values(d.location_distribution), null, { plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } } });
+            mk('cBank', 'pie', Object.keys(d.bank_distribution), Object.values(d.bank_distribution), null, { plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } } });
+            mk('cAge', 'doughnut', Object.keys(d.age_distribution), Object.values(d.age_distribution), [C.cyan, C.blue, C.purple, C.orange, C.red], { cutout: '60%', plugins: { legend: { position: 'bottom' } } });
+            mk('cBal', 'bar', Object.keys(d.balance_distribution), Object.values(d.balance_distribution), [C.cyan + '44'], [C.cyan], { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } });
+            mk('cHRisk', 'doughnut', ['Critical', 'High', 'Medium', 'Low'], [r.CRITICAL, r.HIGH, r.MEDIUM, r.LOW], [C.red, C.orange, C.yellow, C.green], { cutout: '62%', plugins: { legend: { position: 'bottom' } } });
+            mk('cHAnom', 'bar', Object.keys(a), Object.values(a), null, { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } });
+        }
+
+        // ═══════════════════════════════════════
+        // HISTORY
+        // ═══════════════════════════════════════
+        function renderHistory() { allFlagged = dashData.flagged_transactions; renderTable(allFlagged); }
+        function renderTable(data) {
+            const tb = document.getElementById('historyBody'); tb.innerHTML = '';
+            if (!data.length) { tb.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-dim);padding:24px">No flagged transactions found.</td></tr>'; return; }
+            data.forEach(f => {
+                const rc = f.risk_score >= 6 ? 'critical' : f.risk_score >= 4 ? 'high' : f.risk_score >= 2 ? 'medium' : 'low';
+                const tags = f.anomalies.map(a => '<span class="anom-tag">' + a.type + '</span>').join('');
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.innerHTML = `
+                    <td><strong>${f.txn_id}</strong></td>
+                    <td>${f.customer}</td>
+                    <td style="color:var(--accent);font-size:11px">${f.upi}</td>
+                    <td style="font-weight:600">₹${f.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td>${f.merchant}</td>
+                    <td>${f.location}</td>
+                    <td style="font-size:11px">${f.timestamp}</td>
+                    <td><span class="badge ${rc}">${f.risk_score}/10</span></td>
+                    <td>${tags}</td>
+                    <td>
+                        <button onclick="event.stopPropagation();window.location.href='/investigation?txn_id=${f.txn_id}'"
+                            style="display:flex;align-items:center;gap:4px;background:var(--accent);color:#fff;border:none;border-radius:5px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            Investigate
+                        </button>
+                    </td>`;
+                tr.addEventListener('click', () => { window.location.href = '/investigation?txn_id=' + f.txn_id; });
+                tb.appendChild(tr);
+            });
+        }
+        function filterTable() {
+            const risk = document.getElementById('filterRisk').value, q = document.getElementById('filterSearch').value.toLowerCase();
+            let f = allFlagged;
+            if (risk) { const t = { critical: [6, 99], high: [4, 5], medium: [2, 3], low: [0, 1] }; const [lo, hi] = t[risk] || [0, 99]; f = f.filter(x => x.risk_score >= lo && x.risk_score <= hi); }
+            if (q) f = f.filter(x => (x.customer + x.merchant + x.upi + x.txn_id + (x.customer_email || '')).toLowerCase().includes(q));
+            renderTable(f);
+        }
+        function renderSummary() {
+            const k = dashData.kpis, r = dashData.risk_distribution, a = dashData.anomaly_types;
+            let h = '<ul style="padding-left:16px">';
+            if (r.CRITICAL > 0) h += `<li style="color:${C.red}"><strong>${r.CRITICAL} critical-risk transactions</strong> – Recommend immediate account freeze and STR filing.</li>`;
+            if (r.HIGH > 0) h += `<li style="color:${C.orange}"><strong>${r.HIGH} high-risk transactions</strong> – Recommend customer contact and enhanced monitoring.</li>`;
+            if (r.MEDIUM > 0) h += `<li style="color:${C.yellow}"><strong>${r.MEDIUM} medium-risk transactions</strong> – Recommend periodic review.</li>`;
+            if (a.DEVICE_MISMATCH) h += `<li>${a.DEVICE_MISMATCH} device mismatch(es) – potential unauthorized device access.</li>`;
+            if (a.IP_MISMATCH) h += `<li>${a.IP_MISMATCH} IP mismatch(es) – transactions from unusual networks.</li>`;
+            if (a.LOCATION_MISMATCH) h += `<li>${a.LOCATION_MISMATCH} location mismatch(es) – transactions from unexpected cities.</li>`;
+            if (a.HIGH_AMOUNT) h += `<li>${a.HIGH_AMOUNT} high-amount transactions exceeding ₹50K threshold.</li>`;
+            if (a.EXCEEDS_BALANCE) h += `<li>${a.EXCEEDS_BALANCE} transactions exceeding account balance.</li>`;
+            if (a.RAPID_TRANSACTION) h += `<li>${a.RAPID_TRANSACTION} rapid-fire transactions within 5 min.</li>`;
+            h += `<li style="margin-top:8px"><strong>Overall:</strong> ${k.flag_rate}% flag rate, ${k.customers_at_risk}/${k.total_customers} customers impacted (${Math.round(k.customers_at_risk / k.total_customers * 100)}%).</li></ul>`;
+            document.getElementById('summaryContent').innerHTML = h;
+        }
+
+        // ═══════════════════════════════════════
+        // CHEQUES
+        // ═══════════════════════════════════════
+        async function loadCheques() { try { const r = await fetch('/api/cheque/list'); const d = await r.json(); const l = document.getElementById('chequeList'); l.innerHTML = ''; d.cheques.forEach(f => { const i = document.createElement('img'); i.src = '/api/cheque/image/' + f; i.alt = f; i.title = 'Analyze: ' + f; i.onclick = () => analyzeChequeFromList(f); l.appendChild(i); }); } catch (e) { } }
+        async function uploadCheque(file) { if (!file) return; const fd = new FormData(); fd.append('file', file); try { const r = await fetch('/api/cheque/analyze', { method: 'POST', body: fd }); const d = await r.json(); if (d.error) { showChequeResult({ error: d.error }); return; } showChequeResult(d); } catch (e) { showChequeResult({ error: 'Upload failed' }); } }
+        async function analyzeChequeFromList(filename) { try { const r = await fetch('/api/cheque/image/' + filename); const b = await r.blob(); uploadCheque(new File([b], filename, { type: 'image/png' })); } catch (e) { } }
+        function showChequeResult(d) {
+            const dc = document.getElementById('chequeDetailCard'), vc = document.getElementById('chequeValidationCard');
+            if (d.error) { dc.style.display = 'block'; vc.style.display = 'none'; document.getElementById('extractedData').innerHTML = '<p style="color:var(--red)">⚠️ ' + d.error + '</p><p style="color:var(--text-dim);font-size:12px;margin-top:6px">Set Gemini API key for cheque OCR.</p>'; return; }
+            dc.style.display = 'block'; vc.style.display = 'block';
+            let h = ''; for (const [k, v] of Object.entries(d.extracted_data || {})) h += `<div class="item"><span class="k">${k.replace(/_/g, ' ')}</span><span class="v">${v}</span></div>`;
+            document.getElementById('extractedData').innerHTML = h;
+            let vh = ''; (d.validations || []).forEach(v => { const i = v.status === 'PASS' ? '✅' : v.status === 'FAIL' ? '❌' : '⚠️'; vh += `<div class="validation-item">${i} <span><strong>${v.check}:</strong> ${v.detail}</span></div>`; });
+            const oi = d.overall_status === 'PASS' ? '✅' : '❌';
+            vh += `<div style="margin-top:10px;padding:8px 12px;border-radius:6px;background:${d.overall_status === 'PASS' ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)'}"><strong>Overall: ${oi} ${d.overall_status}</strong></div>`;
+            document.getElementById('validationResults').innerHTML = vh;
+        }
+
+        // ═══════════════════════════════════════
+        // TRANSACTION DETAIL MODAL
+        // ═══════════════════════════════════════
+        let _currentTxn = null;
+        function openTxnModal(f) {
+            if (!f) return;
+            _currentTxn = f;
+            const rc = f.risk_score >= 6 ? 'critical' : f.risk_score >= 4 ? 'high' : f.risk_score >= 2 ? 'medium' : 'low';
+            const riskColors = { critical: ['#c96666', '#c9666615'], high: ['#d4845a', '#d4845a15'], medium: ['#c9a84c', '#c9a84c15'], low: ['#7fba8a', '#7fba8a15'] };
+            const [col, bg] = riskColors[rc];
+            const riskLabel = f.risk_score >= 6 ? 'CRITICAL' : f.risk_score >= 4 ? 'HIGH' : f.risk_score >= 2 ? 'MEDIUM' : 'LOW';
+
+            // Risk banner
+            document.getElementById('txnRiskBanner').style.cssText = `border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;font-weight:600;background:${bg};border:1px solid ${col}44;color:${col}`;
+            document.getElementById('txnRiskBanner').innerHTML = `⚠ ${riskLabel} RISK &nbsp;·&nbsp; Risk Score: ${f.risk_score}/10 &nbsp;·&nbsp; ${f.anomalies.length} anomalie(s) detected`;
+
+            // Customer info
+            document.getElementById('txnCustInfo').innerHTML = `
+                <div><b>Name</b><br><span style="color:var(--text-pri);font-weight:500">${f.customer}</span></div>
+                <div><b>UPI ID</b><br><code style="font-size:11px">${f.upi}</code></div>
+                <div><b>Bank</b><br>${f.bank}</div>
+                ${f.customer_email ? `<div><b>Email</b><br><span style="color:var(--accent);font-size:11px">${f.customer_email}</span></div>` : ''}
+                ${f.customer_phone ? `<div><b>Phone</b><br>${f.customer_phone}</div>` : ''}
+                ${f.customer_occupation ? `<div><b>Occupation</b><br>${f.customer_occupation}</div>` : ''}
+                ${f.customer_risk_tier ? `<div><b>Risk Tier</b><br><span style="color:${col};font-weight:600">${f.customer_risk_tier}</span></div>` : ''}
+            `;
+
+            // Transaction info
+            document.getElementById('txnTxnInfo').innerHTML = `
+                <div><b>Transaction ID</b><br><code style="font-size:11px">${f.txn_id}</code></div>
+                <div><b>Amount</b><br><span style="color:#c96666;font-weight:700">₹${f.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                <div><b>Merchant</b><br>${f.merchant}</div>
+                <div><b>Timestamp</b><br>${f.timestamp}</div>
+                <div><b>Location</b><br>${f.location}</div>
+                <div><b>Device</b><br>${f.device}</div>
+                <div><b>IP Address</b><br><code style="font-size:11px">${f.ip}</code></div>
+                ${f.txn_mode ? `<div><b>Mode</b><br>${f.txn_mode}</div>` : ''}
+                ${f.upi_app ? `<div><b>UPI App</b><br>${f.upi_app}</div>` : ''}
+                ${f.txn_status ? `<div><b>Status</b><br><span style="color:${f.txn_status === 'SUCCESS' ? '#7fba8a' : '#c96666'}">${f.txn_status}</span></div>` : ''}
+            `;
+
+            // Anomalies
+            const sevIcon = { CRITICAL: '🔴', HIGH: '🟠', MEDIUM: '🟡', LOW: '🟢' };
+            document.getElementById('txnAnomalies').innerHTML = f.anomalies.length
+                ? f.anomalies.map(a => `
+                    <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-radius:6px;margin-bottom:6px;background:var(--bg-main);border:1px solid var(--border)">
+                        <span style="font-size:14px;flex-shrink:0">${sevIcon[a.severity] || '⚪'}</span>
+                        <div>
+                            <div style="font-size:12px;font-weight:600;color:var(--text-pri)">${a.type}</div>
+                            <div style="font-size:11px;color:var(--text-sec);margin-top:2px">${a.detail}</div>
+                        </div>
+                        <span style="margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;border-radius:3px;background:var(--bg-card);color:var(--text-dim)">${a.severity}</span>
+                    </div>`).join('')
+                : '<p style="color:var(--text-dim);font-size:12px">No anomalies found.</p>';
+
+            // Pre-fill email
+            document.getElementById('txnEmailInput').value = f.customer_email || '';
+            document.getElementById('txnEmailStatus').style.display = 'none';
+
+            document.getElementById('txnModal').classList.add('show');
+            lucide.createIcons();
+        }
+        function closeTxnModal() {
+            document.getElementById('txnModal').classList.remove('show');
+            _currentTxn = null;
+        }
+        async function sendAlertEmail() {
+            if (!_currentTxn) return;
+            const email = document.getElementById('txnEmailInput').value.trim();
+            if (!email || !email.includes('@')) {
+                showEmailStatus('⚠ Please enter a valid email address.', '#c9a84c'); return;
+            }
+            const btn = document.getElementById('sendEmailBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg> Sending…';
+            try {
+                const r = await fetch('/api/send_alert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        txn_id: _currentTxn.txn_id,
+                        customer_uuid: _currentTxn.customer_uuid,
+                        recipient_email: email,
+                        generate_pdf: true
+                    })
+                });
+                const d = await r.json();
+                if (d.success) {
+                    showEmailStatus(`✅ Alert email sent to ${email} with PDF report attached.`, '#7fba8a');
+                } else {
+                    showEmailStatus(`❌ Failed: ${d.error}`, '#c96666');
+                }
+            } catch (e) {
+                showEmailStatus('❌ Network error. Check server.', '#c96666');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Send Alert Email';
+        }
+        function showEmailStatus(msg, color) {
+            const el = document.getElementById('txnEmailStatus');
+            el.style.display = 'block';
+            el.style.color = color;
+            el.textContent = msg;
+        }
+        async function downloadTxnReport() {
+            if (!_currentTxn) return;
+            const a = document.createElement('a');
+            a.href = `/api/generate_report/${_currentTxn.txn_id}`;
+            a.download = `Report_${_currentTxn.txn_id}.pdf`;
+            document.body.appendChild(a); a.click(); a.remove();
+        }
+
+        // ── API Key Modal ──
+        function openApiKeyModal() { document.getElementById('apiKeyModal').classList.add('show') }
+        function closeApiKeyModal() { document.getElementById('apiKeyModal').classList.remove('show') }
+        async function saveApiKey() { const key = document.getElementById('apiKeyInput').value.trim(); if (!key) return; try { const r = await fetch('/api/set_key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: key }) }); const d = await r.json(); closeApiKeyModal(); addMsg(d.success ? '✅ Gemini API key configured.' : '❌ Failed to set key.', 'bot'); } catch (e) { closeApiKeyModal(); addMsg('⚠️ Server error.', 'bot'); } }
+        document.getElementById('apiKeyModal').addEventListener('click', function (e) { if (e.target === this) closeApiKeyModal() });
+
+        // ═══════════════════════════════════════
+        // HISTORY — Customer Behaviour Profiles
+        // ═══════════════════════════════════════
+        let hAllProfiles = [], hFiltered = [], hLoaded = false;
+
+        // Load when History tab is clicked
+        const _origGo = go;
+        go = function (page) {
+            _origGo(page);
+            if (page === 'history' && !hLoaded) { hLoaded = true; hLoadProfiles(); }
+        };
+
+        async function hLoadProfiles() {
+            try {
+                const r = await fetch('/api/analytics/overview');
+                const d = await r.json();
+                hAllProfiles = d.customer_profiles || [];
+                hFiltered = [...hAllProfiles];
+
+                // Populate bank filter
+                const banks = [...new Set(hAllProfiles.map(p => p.bank_name))].sort();
+                const sel = document.getElementById('hBankFilter');
+                banks.forEach(b => { const o = document.createElement('option'); o.value = o.textContent = b; sel.appendChild(o); });
+
+                document.getElementById('hLoading').style.display = 'none';
+                document.getElementById('hFilters').style.display = 'flex';
+                document.getElementById('hTableWrap').style.display = 'block';
+                document.getElementById('hResultCount').textContent = `${hAllProfiles.length} customers`;
+                hRenderTable();
+            } catch (e) {
+                document.getElementById('hLoading').innerHTML = `<p style="color:var(--red)">Failed to load profiles: ${e}</p>`;
+            }
+        }
+
+        function hScoreColor(s) {
+            if (s >= 6) return 'var(--red)';
+            if (s >= 4) return 'var(--orange)';
+            if (s >= 2) return 'var(--yellow)';
+            return 'var(--green)';
+        }
+        function hRiskCls(r) { return { CRITICAL: 'critical', HIGH: 'high', MEDIUM: 'medium', LOW: 'low' }[r] || 'low'; }
+        function hTagStyle(t) {
+            if (t.includes('CRITICAL')) return 'background:rgba(201,102,102,.15);color:var(--red)';
+            if (t.includes('HIGH')) return 'background:rgba(212,132,90,.15);color:var(--orange)';
+            if (t === 'NORMAL') return 'background:rgba(127,186,138,.15);color:var(--green)';
+            return 'background:rgba(157,181,176,.15);color:var(--cyan)';
+        }
+        function hCur(n) {
+            if (!n || isNaN(n)) return '₹0';
+            if (n >= 1e7) return '₹' + (n / 1e7).toFixed(1) + 'Cr';
+            if (n >= 1e5) return '₹' + (n / 1e5).toFixed(1) + 'L';
+            if (n >= 1e3) return '₹' + Math.round(n / 1e3) + 'K';
+            return '₹' + Math.round(n).toLocaleString('en-IN');
+        }
+
+        function hApplyFilters() {
+            const q = (document.getElementById('hSearch').value || '').toLowerCase();
+            const risk = document.getElementById('hRiskFilter').value;
+            const behav = document.getElementById('hBehavFilter').value;
+            const bank = document.getElementById('hBankFilter').value;
+            hFiltered = hAllProfiles.filter(p => {
+                if (risk && p.risk_level !== risk) return false;
+                if (behav && !(p.behaviour_tags || []).includes(behav)) return false;
+                if (bank && p.bank_name !== bank) return false;
+                if (q) {
+                    const hay = [p.customer_uuid, p.full_name, p.upi_id, p.bank_name, p.email, p.primary_location, p.occupation].join(' ').toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                return true;
+            });
+            document.getElementById('hResultCount').textContent = `${hFiltered.length} of ${hAllProfiles.length} customers`;
+            hRenderTable();
+        }
+
+        function hRenderTable() {
+            const tb = document.getElementById('hCustBody');
+            tb.innerHTML = '';
+            if (!hFiltered.length) {
+                tb.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:28px">No customers match filters.</td></tr>`;
+                return;
+            }
+            hFiltered.forEach(p => {
+                const sc = hScoreColor(p.risk_score);
+                const rcl = hRiskCls(p.risk_level);
+                const w = Math.round((p.risk_score / 10) * 100);
+                const tags = (p.behaviour_tags || []).map(t =>
+                    `<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin:1px;text-transform:uppercase;letter-spacing:.03em;${hTagStyle(t)}">${t.replace(/_/g, ' ')}</span>`
+                ).join('');
+
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.innerHTML = `
+                    <td><code style="font-size:9px;color:var(--text-dim)">${p.customer_uuid}</code></td>
+                    <td style="font-weight:600;font-size:12px;white-space:nowrap">${p.full_name}</td>
+                    <td style="font-size:11px;color:var(--accent);font-family:monospace">${p.upi_id}</td>
+                    <td style="font-size:12px">${p.bank_name}</td>
+                    <td style="font-size:12px">📍 ${p.primary_location}</td>
+                    <td style="text-align:center;font-weight:600">${p.txn_count}</td>
+                    <td style="font-weight:600;font-size:12px">${hCur(p.total_amount)}</td>
+                    <td style="text-align:center;font-weight:700;color:${p.anomaly_count > 0 ? 'var(--red)' : 'var(--green)'}">${p.anomaly_count}</td>
+                    <td>
+                        <div style="font-weight:700;color:${sc};font-size:12px">${p.risk_score}/10</div>
+                        <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-top:3px;width:52px">
+                            <div style="height:100%;border-radius:2px;width:${w}%;background:${sc}"></div>
+                        </div>
+                    </td>
+                    <td>${tags}</td>
+                    <td><span class="badge ${rcl}">${p.risk_level}</span></td>
+                    <td>
+                        <a href="/customer_summary?cust_id=${p.customer_uuid}" onclick="event.stopPropagation();"
+                           style="display:inline-flex;align-items:center;gap:4px;background:var(--accent);color:#1a1916;border:none;border-radius:5px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            View
+                        </a>
+                    </td>`;
+                tr.addEventListener('click', () => window.location.href = '/customer_summary?cust_id=' + p.customer_uuid);
+                tb.appendChild(tr);
+            });
+        }
+
+        function hOpenPanel(p) {
+            if (!p) return;
+            document.getElementById('hdName').textContent = p.full_name;
+            document.getElementById('hdUuid').textContent = p.customer_uuid;
+
+            const rcol = { CRITICAL: 'var(--red)', HIGH: 'var(--orange)', MEDIUM: 'var(--yellow)', LOW: 'var(--green)' }[p.risk_level] || 'var(--text-sec)';
+            const w = Math.round((p.risk_score / 10) * 100);
+
+            document.getElementById('hdBody').innerHTML = `
+                <div style="margin-bottom:16px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Identity</div>
+                    ${[['Customer UUID', `<code style="font-size:10px">${p.customer_uuid}</code>`],
+                ['UPI ID', `<span style="color:var(--accent);font-family:monospace;font-size:11px">${p.upi_id}</span>`],
+                ['Bank', p.bank_name], ['Account No.', `<code style="font-size:10px">${p.account_number}</code>`],
+                ['Email', p.email], ['Phone', p.phone],
+                ['Occupation', p.occupation], ['KYC Status', p.kyc_status],
+                ['Risk Tier', p.risk_tier],
+                ['Account Balance', `<strong style="color:var(--green)">₹${parseFloat(p.account_balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>`]
+                ].map(([k, v]) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:11px;color:var(--text-dim)">${k}</span><span style="font-size:11px;color:var(--text-sec);text-align:right;max-width:60%;word-break:break-all">${v || '—'}</span></div>`).join('')}
+                </div>
+                <div style="margin-bottom:16px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Risk Assessment</div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--text-dim)">Risk Level</span><span class="badge ${hRiskCls(p.risk_level)}">${p.risk_level}</span></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--text-dim)">Risk Score</span><span style="font-size:11px;color:${rcol};font-weight:700">${p.risk_score}/10</span></div>
+                    <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden;margin:6px 0"><div style="height:100%;width:${w}%;background:${rcol};border-radius:3px"></div></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:11px;color:var(--text-dim)">Anomalies</span><span style="font-size:11px;font-weight:700;color:${p.anomaly_count > 0 ? 'var(--red)' : 'var(--green)'}">${p.anomaly_count} flagged</span></div>
+                </div>
+                <div style="margin-bottom:16px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Transaction Behaviour</div>
+                    ${[['Total Transactions', p.txn_count],
+                ['Total Spent', hCur(p.total_amount)],
+                ['Avg Transaction', hCur(p.avg_amount)],
+                ['Largest Transaction', hCur(p.max_amount)],
+                ['Successful', p.success_count],
+                ['Failed / Declined', p.failed_count]
+                ].map(([k, v]) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:11px;color:var(--text-dim)">${k}</span><span style="font-size:11px;color:var(--text-sec);font-weight:500">${v}</span></div>`).join('')}
+                </div>
+                <div style="margin-bottom:16px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Locations &amp; Modes</div>
+                    ${[['Primary Location', `📍 ${p.primary_location}`],
+                ['All Locations', Object.entries(p.all_locations || {}).map(([c, n]) => `${c}(${n})`).join(', ') || '—'],
+                ['UPI Apps', Object.keys(p.upi_apps || {}).join(', ') || '—'],
+                ['Txn Modes', Object.keys(p.transaction_modes || {}).join(', ') || '—']
+                ].map(([k, v]) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:11px;color:var(--text-dim)">${k}</span><span style="font-size:11px;color:var(--text-sec);text-align:right;max-width:65%;word-break:break-word">${v}</span></div>`).join('')}
+                </div>
+                <div style="margin-bottom:16px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:8px">Behaviour Tags</div>
+                    <div>${(p.behaviour_tags || []).map(t => `<span style="display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:4px;margin:2px;text-transform:uppercase;${hTagStyle(t)}">${t.replace(/_/g, ' ')}</span>`).join('')}</div>
+                </div>
+                <div style="margin-bottom:16px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:8px">Top Merchants</div>
+                    <div style="font-size:12px;color:var(--text-sec);line-height:2">${(p.top_merchants || []).map(m => `• ${m}`).join('<br>') || '—'}</div>
+                </div>
+                <a href="/dashboard#history" onclick="event.preventDefault();hClosePanel();go('history')" style="display:flex;align-items:center;gap:7px;background:rgba(200,184,154,.12);border:1px solid var(--accent);color:var(--accent);border-radius:7px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;justify-content:center;margin-bottom:8px">
+                    ← Back to Table
+                </a>
+            `;
+            document.getElementById('hDetailPanel').style.transform = 'translateX(0)';
+        }
+        function hClosePanel() {
+            document.getElementById('hDetailPanel').style.transform = 'translateX(100%)';
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') hClosePanel(); });
+
+        document.getElementById('chatInput').focus();
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

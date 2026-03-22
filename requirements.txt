@@ -1,0 +1,7 @@
+flask
+flask-cors
+pandas
+fpdf2
+gtts
+pillow
+google-generativeai
