@@ -105,11 +105,6 @@ npm run dev
 
 ---
 
-## 👥 The Team
-- **Yash Bhosale**
-- **Dhiraj Jadhav**
-- **Samruddhi Chaudhari**
-- **Aarya Bhangare**
 
 *"With great data, comes great responsibility."*
 © 2026 DataWeb // ClearTrace // INTO THE DATAVERSE.
